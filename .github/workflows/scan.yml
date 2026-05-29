@@ -6,13 +6,13 @@
 # so the Streamlit dashboard can always fetch the freshest data.
 #
 # WHERE TO ADD SECRETS:
-#   GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+#   GH repo → Settings → Secrets and variables → Actions → New repository secret
 #   Add each of these:
 #     AWS_ACCESS_KEY_ID       — your IAM user access key
 #     AWS_SECRET_ACCESS_KEY   — your IAM user secret
 #     AWS_DEFAULT_REGION      — e.g. us-east-1
-#     COMPLY_GITHUB_TOKEN     — a PAT with repo/public_repo scope
-#     GITHUB_REPOS            — comma-separated owner/repo values to scan
+#     COMPLY_GH_TOKEN     — a PAT with repo/public_repo scope
+#     GH_REPOS            — comma-separated owner/repo values to scan
 # ──────────────────────────────────────────────────────────────────────────────
 
 name: Compliance Scan
@@ -49,8 +49,8 @@ jobs:
           AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION:    ${{ secrets.AWS_DEFAULT_REGION }}
-          GITHUB_TOKEN:          ${{ secrets.COMPLY_GITHUB_TOKEN }}
-          GITHUB_REPOS:          ${{ secrets.GH_REPOS }}
+          GH_TOKEN:          ${{ secrets.COMPLY_GH_TOKEN }}
+          GH_REPOS:          ${{ secrets.GH_REPOS }}
         run: |
           mkdir -p reports
           python main.py scan || true
@@ -72,7 +72,7 @@ jobs:
       - name: Publish report to reports-data branch
         run: |
           git config user.name  "comply-bot"
-          git config user.email "comply-bot@users.noreply.github.com"
+          git config user.email "comply-bot@users.noreply.GH.com"
 
           # Create or switch to the reports-data branch (orphan on first run)
           git fetch origin reports-data 2>/dev/null && \
