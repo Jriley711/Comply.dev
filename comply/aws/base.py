@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 
 class Finding:
-    """Represents a single compliance finding."""
+    """Represents a single compliance finding with audit reasoning."""
 
     SEVERITY_CRITICAL = "CRITICAL"
     SEVERITY_HIGH = "HIGH"
@@ -26,6 +26,8 @@ class Finding:
         severity: str,
         description: str,
         remediation: str,
+        reasoning: str = "",
+        control_domain: str = "General",
         frameworks: dict = None,
     ):
         self.check_id = check_id
@@ -35,6 +37,8 @@ class Finding:
         self.severity = severity
         self.description = description
         self.remediation = remediation
+        self.reasoning = reasoning
+        self.control_domain = control_domain
         self.frameworks = frameworks or {}
         self.timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -47,6 +51,8 @@ class Finding:
             "severity": self.severity,
             "description": self.description,
             "remediation": self.remediation,
+            "reasoning": self.reasoning,
+            "control_domain": self.control_domain,
             "frameworks": self.frameworks,
             "timestamp": self.timestamp,
         }
