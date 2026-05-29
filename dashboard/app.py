@@ -31,15 +31,15 @@ def get_secret(key: str, default: str = "") -> str:
 AWS_ACCESS_KEY_ID     = get_secret("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = get_secret("AWS_SECRET_ACCESS_KEY")
 AWS_DEFAULT_REGION    = get_secret("AWS_DEFAULT_REGION", "us-east-1")
-GH_TOKEN          = get_secret("GH_TOKEN")
-GH_REPOS          = get_secret("GH_REPOS")
+GitHub_TOKEN          = get_secret("GH_TOKEN")
+GitHub_REPOS          = get_secret("GH_REPOS")
 
 # GH raw URL for the latest scan report (written by GH Actions)
-GH_USERNAME = get_secret("GH_USERNAME", "Jriley711")
-GH_REPO     = get_secret("GH_REPO", "Comply.dev")
+GitHub_USERNAME = get_secret("GH_USERNAME", "Jriley711")
+GitHub_REPO     = get_secret("GH_REPO", "Comply.dev")
 REPORT_URL = (
-    f"https://raw.GHusercontent.com/"
-    f"{GH_USERNAME}/{GH_REPO}/reports-data/reports/latest.json"
+    f"https://raw.GitHubusercontent.com/"
+    f"{GitHub_USERNAME}/{GitHub_REPO}/reports-data/reports/latest.json"
 )
 
 
@@ -60,7 +60,7 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=3600)
-def load_report_from_GH() -> dict | None:
+def load_report_from_GitHub() -> dict | None:
     """Fetch the latest scan report JSON from the reports-data branch."""
     try:
         resp = requests.get(REPORT_URL, timeout=10)
@@ -101,11 +101,11 @@ def run_live_scan() -> dict | None:
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
             region_name=AWS_DEFAULT_REGION,
         )
-        gh_repos = [r.strip() for r in GH_REPOS.split(",")] if GH_REPOS else []
+        GitHub_repos = [r.strip() for r in GitHub_REPOS.split(",")] if GitHub_REPOS else []
         scanner = ComplyScanner(
             aws_session=session,
-            GH_token=GH_TOKEN or None,
-            GH_repos=gh_repos,
+            GitHub_token=GitHub_TOKEN or None,
+            GitHub_repos=GitHub_repos,
         )
         return scanner.run_full_scan()
     except Exception as e:
@@ -124,7 +124,7 @@ with st.sidebar:
 
     data_source = st.radio(
         "Data source",
-        ["Latest scan (GH)", "Upload report", "Run live scan"],
+        ["Latest scan (GitHub)", "Upload report", "Run live scan"],
         index=0,
     )
 
@@ -134,8 +134,8 @@ with st.sidebar:
 
     st.divider()
     st.caption(f"Region: `{AWS_DEFAULT_REGION}`")
-    if GH_REPOS:
-        st.caption(f"Repos: `{GH_REPOS}`")
+    if GitHub_REPOS:
+        st.caption(f"Repos: `{GitHub_REPOS}`")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -144,12 +144,12 @@ with st.sidebar:
 
 report = None
 
-if data_source == "Latest scan (GH)":
-    with st.spinner("Loading latest scan from GH..."):
-        report = load_report_from_GH()
+if data_source == "Latest scan (GitHub)":
+    with st.spinner("Loading latest scan from GitHub..."):
+        report = load_report_from_GitHub()
     if report is None:
         st.info(
-            "No scan report found yet. Run the GH Actions workflow "
+            "No scan report found yet. Run the GitHub Actions workflow "
             "(`Actions → Compliance Scan → Run workflow`) to generate one.",
             icon="ℹ️",
         )
