@@ -7,6 +7,21 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 
+
+import os
+import streamlit as st
+
+# Load secrets from Streamlit Cloud
+if hasattr(st, "secrets"):
+    try:
+        os.environ["AWS_ACCESS_KEY_ID"] = st.secrets["aws"]["AWS_ACCESS_KEY_ID"]
+        os.environ["AWS_SECRET_ACCESS_KEY"] = st.secrets["aws"]["AWS_SECRET_ACCESS_KEY"]
+        os.environ["AWS_DEFAULT_REGION"] = st.secrets["aws"]["AWS_DEFAULT_REGION"]
+        os.environ["GITHUB_TOKEN"] = st.secrets["github"]["GITHUB_TOKEN"]
+    except Exception:
+        pass
+
+
 # ── Page Config ───────────────────────────────────────────────
 st.set_page_config(
     page_title="Comply.dev Dashboard",
