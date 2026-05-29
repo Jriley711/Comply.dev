@@ -1,3 +1,1 @@
-from .generator import ReportGenerator
-
-__all__ = ["ReportGenerator"]
+# This file marks the directory as a Python package.

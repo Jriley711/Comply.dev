@@ -1,3 +1,1 @@
-from .repo_scanner import GitHubRepoScanner
-
-__all__ = ["GitHubRepoScanner"]
+# This file marks the directory as a Python package.

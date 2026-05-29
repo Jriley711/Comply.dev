@@ -6,7 +6,6 @@ import sys
 import click
 import boto3
 from dotenv import load_dotenv
-
 from comply.scanner import ComplyScanner
 
 load_dotenv()
@@ -15,7 +14,7 @@ load_dotenv()
 @click.group()
 @click.version_option(version="0.1.0", prog_name="comply-dev")
 def cli():
-    """🛡️  Comply.dev — Cloud Compliance Scanner
+    """🛡️ Comply.dev — Cloud Compliance Scanner
 
     Automated compliance checks for AWS and GitHub repositories,
     mapped to SOC 2, ISO 27001, and CIS AWS Benchmarks.
@@ -33,6 +32,10 @@ def cli():
 @click.option("--skip-github", is_flag=True, help="Skip GitHub scans")
 def scan(aws_profile, region, github_token, github_repos, output_dir, skip_aws, skip_github):
     """Run a full compliance scan."""
+    if skip_aws and skip_github:
+        click.echo("❌ Both AWS and GitHub scans skipped. Nothing to do.")
+        sys.exit(1)
+
     # AWS session setup
     session_kwargs = {}
     if aws_profile:
@@ -60,10 +63,6 @@ def scan(aws_profile, region, github_token, github_repos, output_dir, skip_aws, 
         github_repos=gh_repos,
     )
 
-    if skip_aws and skip_github:
-        click.echo("❌ Both AWS and GitHub scans skipped. Nothing to do.")
-        sys.exit(1)
-
     results = scanner.run_full_scan()
 
     # Exit code based on findings
@@ -71,6 +70,7 @@ def scan(aws_profile, region, github_token, github_repos, output_dir, skip_aws, 
         1 for f in results["findings"]
         if f.get("severity") == "CRITICAL" and f.get("status") == "FAIL"
     )
+
     if critical_count > 0:
         click.echo(f"\n⚠️  {critical_count} CRITICAL findings detected. Exiting with code 1.")
         sys.exit(1)
@@ -89,18 +89,13 @@ def scan_repo(repo, github_token):
         click.echo("❌ GitHub token required. Set GITHUB_TOKEN env var or use --github-token.")
         sys.exit(1)
 
-    scanner = ComplyScanner(
-        aws_session=None,
-        github_token=gh_token,
-        github_repos=[repo],
-    )
-
-    # Only run GitHub scan
-    from comply.github import GitHubRepoScanner
-    from comply.reports import ReportGenerator
+    # FIX: corrected import paths to match actual module structure
+    from comply.github.repo_scanner import GitHubRepoScanner
+    from comply.reports.generator import ReportGenerator
     from rich.console import Console
 
     console = Console()
+
     gh_scanner = GitHubRepoScanner(token=gh_token, repos=[repo])
     findings = gh_scanner.scan()
 
