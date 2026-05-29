@@ -30,11 +30,12 @@ jobs:
 
       - name: Run compliance scan
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AKIAUUL62ORR5HILEVGM }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.6EZHI7YtP5B0UOAH1yV+oKISbX4wsWEJaC3gxIcJ }}
-          AWS_DEFAULT_REGION: ${{ secrets.us-east-1 }}
-          GITHUB_TOKEN: ${{ secrets.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 }}
-          GITHUB_REPOS: ${{ secrets.Jriley711/github.com/Jriley711/iso27001-dashboard }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          GITHUB_TOKEN: ${{ secrets.GH_SCAN_TOKEN }}
+          GITHUB_REPOS: ${{ secrets.GITHUB_REPOS }}
+
         run: |
           python main.py scan --output-dir reports
 
