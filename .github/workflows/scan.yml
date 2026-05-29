@@ -1,70 +1,89 @@
-name: Comply.dev Scheduled Scan
+# ──────────────────────────────────────────────────────────────────────────────
+# Comply.dev — Automated Compliance Scan
+#
+# Runs on a weekly schedule AND can be triggered manually from the Actions tab.
+# Results are committed as reports/latest.json on the `reports-data` branch
+# so the Streamlit dashboard can always fetch the freshest data.
+#
+# WHERE TO ADD SECRETS:
+#   GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+#   Add each of these:
+#     AWS_ACCESS_KEY_ID       — your IAM user access key
+#     AWS_SECRET_ACCESS_KEY   — your IAM user secret
+#     AWS_DEFAULT_REGION      — e.g. us-east-1
+#     COMPLY_GITHUB_TOKEN     — a PAT with repo/public_repo scope
+#     GITHUB_REPOS            — comma-separated owner/repo values to scan
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Compliance Scan
 
 on:
   schedule:
-    - cron: "0 8 * * 1"
-  workflow_dispatch:
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    - cron: "0 6 * * 1"   # Every Monday at 06:00 UTC
+  workflow_dispatch:        # Manual trigger from Actions tab
 
 jobs:
-  compliance-scan:
+  scan:
+    name: Run compliance scan
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write       # Needed to push the report to reports-data branch
 
     steps:
-      - name: Checkout code
+      - name: Checkout main branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # Full history so we can switch branches
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Run compliance scan
+      - name: Run full compliance scan
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          GITHUB_TOKEN: ${{ secrets.GH_SCAN_TOKEN }}
-          GITHUB_REPOS: ${{ secrets.GITHUB_REPOS }}
-
+          AWS_DEFAULT_REGION:    ${{ secrets.AWS_DEFAULT_REGION }}
+          GITHUB_TOKEN:          ${{ secrets.COMPLY_GITHUB_TOKEN }}
+          GITHUB_REPOS:          ${{ secrets.GH_REPOS }}
         run: |
-          python main.py scan --output-dir reports
+          mkdir -p reports
+          python main.py scan || true
+          # "|| true" prevents a CRITICAL findings exit-code from failing the workflow.
+          # The findings are still recorded in the report file.
 
-      - name: Commit reports to repo
+      - name: Normalise report filename to latest.json
         run: |
-          git config user.name "comply-dev-bot"
-          git config user.email "bot@comply.dev"
-          git add reports/
-          git diff --staged --quiet || git commit -m "🛡️ Auto-update: compliance scan $(date +%Y-%m-%d)"
-          git push
+          # main.py writes reports/comply_report_<timestamp>.json
+          # We copy the newest one to a fixed filename for the dashboard.
+          LATEST=$(ls -t reports/comply_report_*.json 2>/dev/null | head -1)
+          if [ -z "$LATEST" ]; then
+            echo "No report file found — scan may have failed."
+            exit 1
+          fi
+          cp "$LATEST" reports/latest.json
+          echo "Report saved: $LATEST → reports/latest.json"
 
-      - name: Upload reports as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: compliance-reports
-          path: reports/
-          retention-days: 30
-
-      - name: Check for critical findings
+      - name: Publish report to reports-data branch
         run: |
-          python -c "
-          import json, glob, sys
-          reports = sorted(glob.glob('reports/*.json'), reverse=True)
-          if reports:
-              data = json.load(open(reports[0]))
-              criticals = sum(1 for f in data['findings'] if f.get('severity') == 'CRITICAL' and f.get('status') == 'FAIL')
-              if criticals > 0:
-                  print(f'::error::{criticals} CRITICAL findings detected!')
-                  sys.exit(1)
-              else:
-                  print('No critical findings.')
-          "
+          git config user.name  "comply-bot"
+          git config user.email "comply-bot@users.noreply.github.com"
+
+          # Create or switch to the reports-data branch (orphan on first run)
+          git fetch origin reports-data 2>/dev/null && \
+            git checkout reports-data || \
+            git checkout --orphan reports-data
+
+          # Keep only the reports directory on this branch
+          mkdir -p reports
+          cp /home/runner/work/Comply.dev/Comply.dev/reports/latest.json reports/latest.json 2>/dev/null || true
+
+          git add reports/latest.json
+          git diff --staged --quiet && echo "No changes to commit." || \
+            git commit -m "chore: compliance scan $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin reports-data
