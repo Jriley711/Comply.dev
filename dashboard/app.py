@@ -32,7 +32,7 @@ AWS_ACCESS_KEY_ID     = get_secret("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = get_secret("AWS_SECRET_ACCESS_KEY")
 AWS_DEFAULT_REGION    = get_secret("AWS_DEFAULT_REGION", "us-east-1")
 GITHUB_TOKEN          = get_secret("GITHUB_TOKEN")
-GITHUB_REPOS          = get_secret("GITHUB_REPOS")
+GITHUB_REPOS          = get_secret("GH_REPOS")
 
 # GitHub raw URL for the latest scan report (written by GitHub Actions)
 GITHUB_USERNAME = get_secret("GITHUB_USERNAME", "Jriley711")
