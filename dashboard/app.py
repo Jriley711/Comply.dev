@@ -41,7 +41,10 @@ st.markdown("""
 # ── Load Report Data ──────────────────────────────────────────
 def load_latest_report():
     """Load the most recent JSON report."""
-    reports = sorted(glob.glob("reports/comply_report_*.json"), reverse=True)
+    import pathlib
+    # Get the project root (one level up from dashboard/)
+    root = pathlib.Path(__file__).parent.parent
+    reports = sorted(glob.glob(str(root / "reports" / "comply_report_*.json")), reverse=True)
     if not reports:
         return None
     with open(reports[0], "r") as f:
