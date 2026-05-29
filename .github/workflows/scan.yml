@@ -11,6 +11,8 @@ env:
 jobs:
   compliance-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -36,7 +38,15 @@ jobs:
         run: |
           python main.py scan --output-dir reports
 
-      - name: Upload reports
+      - name: Commit reports to repo
+        run: |
+          git config user.name "comply-dev-bot"
+          git config user.email "bot@comply.dev"
+          git add reports/
+          git diff --staged --quiet || git commit -m "🛡️ Auto-update: compliance scan $(date +%Y-%m-%d)"
+          git push
+
+      - name: Upload reports as artifact
         uses: actions/upload-artifact@v4
         with:
           name: compliance-reports
