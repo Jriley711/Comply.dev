@@ -1,11 +1,12 @@
 name: Comply.dev Scheduled Scan
 
 on:
-  # Run every Monday at 8 AM UTC
   schedule:
     - cron: "0 8 * * 1"
-  # Also allow manual trigger
   workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   compliance-scan:
@@ -54,5 +55,5 @@ jobs:
                   print(f'::error::{criticals} CRITICAL findings detected!')
                   sys.exit(1)
               else:
-                  print('✅ No critical findings.')
+                  print('No critical findings.')
           "
