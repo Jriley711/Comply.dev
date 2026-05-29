@@ -31,15 +31,15 @@ def get_secret(key: str, default: str = "") -> str:
 AWS_ACCESS_KEY_ID     = get_secret("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = get_secret("AWS_SECRET_ACCESS_KEY")
 AWS_DEFAULT_REGION    = get_secret("AWS_DEFAULT_REGION", "us-east-1")
-GITHUB_TOKEN          = get_secret("GITHUB_TOKEN")
-GITHUB_REPOS          = get_secret("GH_REPOS")
+GH_TOKEN          = get_secret("GH_TOKEN")
+GH_REPOS          = get_secret("GH_REPOS")
 
-# GitHub raw URL for the latest scan report (written by GitHub Actions)
-GITHUB_USERNAME = get_secret("GITHUB_USERNAME", "Jriley711")
-GITHUB_REPO     = get_secret("GITHUB_REPO", "Comply.dev")
+# GH raw URL for the latest scan report (written by GH Actions)
+GH_USERNAME = get_secret("GH_USERNAME", "Jriley711")
+GH_REPO     = get_secret("GH_REPO", "Comply.dev")
 REPORT_URL = (
-    f"https://raw.githubusercontent.com/"
-    f"{GITHUB_USERNAME}/{GITHUB_REPO}/reports-data/reports/latest.json"
+    f"https://raw.GHusercontent.com/"
+    f"{GH_USERNAME}/{GH_REPO}/reports-data/reports/latest.json"
 )
 
 
@@ -60,7 +60,7 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=3600)
-def load_report_from_github() -> dict | None:
+def load_report_from_GH() -> dict | None:
     """Fetch the latest scan report JSON from the reports-data branch."""
     try:
         resp = requests.get(REPORT_URL, timeout=10)
@@ -69,7 +69,7 @@ def load_report_from_github() -> dict | None:
     except requests.exceptions.HTTPError as e:
         if resp.status_code == 404:
             return None  # no report yet — first run
-        st.error(f"Failed to load report from GitHub: {e}")
+        st.error(f"Failed to load report from GH: {e}")
         return None
     except Exception as e:
         st.error(f"Unexpected error loading report: {e}")
@@ -101,11 +101,11 @@ def run_live_scan() -> dict | None:
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
             region_name=AWS_DEFAULT_REGION,
         )
-        gh_repos = [r.strip() for r in GITHUB_REPOS.split(",")] if GITHUB_REPOS else []
+        gh_repos = [r.strip() for r in GH_REPOS.split(",")] if GH_REPOS else []
         scanner = ComplyScanner(
             aws_session=session,
-            github_token=GITHUB_TOKEN or None,
-            github_repos=gh_repos,
+            GH_token=GH_TOKEN or None,
+            GH_repos=gh_repos,
         )
         return scanner.run_full_scan()
     except Exception as e:
@@ -124,7 +124,7 @@ with st.sidebar:
 
     data_source = st.radio(
         "Data source",
-        ["Latest scan (GitHub)", "Upload report", "Run live scan"],
+        ["Latest scan (GH)", "Upload report", "Run live scan"],
         index=0,
     )
 
@@ -134,8 +134,8 @@ with st.sidebar:
 
     st.divider()
     st.caption(f"Region: `{AWS_DEFAULT_REGION}`")
-    if GITHUB_REPOS:
-        st.caption(f"Repos: `{GITHUB_REPOS}`")
+    if GH_REPOS:
+        st.caption(f"Repos: `{GH_REPOS}`")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -144,12 +144,12 @@ with st.sidebar:
 
 report = None
 
-if data_source == "Latest scan (GitHub)":
-    with st.spinner("Loading latest scan from GitHub..."):
-        report = load_report_from_github()
+if data_source == "Latest scan (GH)":
+    with st.spinner("Loading latest scan from GH..."):
+        report = load_report_from_GH()
     if report is None:
         st.info(
-            "No scan report found yet. Run the GitHub Actions workflow "
+            "No scan report found yet. Run the GH Actions workflow "
             "(`Actions → Compliance Scan → Run workflow`) to generate one.",
             icon="ℹ️",
         )
