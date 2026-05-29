@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comply.dev — Compliance Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+               background: #0f172a; color: #e2e8f0; line-height: 1.6; padding: 2rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 2rem; color: #38bdf8; margin-bottom: 0.5rem; }
+        .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; text-align: center; }
+        .card .number { font-size: 2.5rem; font-weight: bold; }
+        .card .label { color: #94a3b8; font-size: 0.9rem; }
+        .critical { color: #ef4444; }
+        .high { color: #f97316; }
+        .medium { color: #eab308; }
+        .low { color: #22c55e; }
+        .pass { color: #22c55e; }
+        .fail { color: #ef4444; }
+        .framework-section { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
+        .framework-bar { background: #334155; border-radius: 8px; height: 24px; margin: 0.5rem 0; overflow: hidden; }
+        .framework-fill { height: 100%; border-radius: 8px; transition: width 0.5s ease; display: flex;
+                         align-items: center; padding-left: 8px; font-size: 0.8rem; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th { background: #334155; color: #38bdf8; padding: 12px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #334155; }
+        tr:hover { background: #1e293b; }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
+        .badge-critical { background: #450a0a; color: #ef4444; }
+        .badge-high { background: #431407; color: #f97316; }
+        .badge-medium { background: #422006; color: #eab308; }
+        .badge-low { background: #052e16; color: #22c55e; }
+        .badge-pass { background: #052e16; color: #22c55e; }
+        .badge-fail { background: #450a0a; color: #ef4444; }
+        .badge-warning { background: #422006; color: #eab308; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Comply.dev — Compliance Report</h1>
+        <p class="subtitle">Generated May 29, 2026 at 20:25 UTC</p>
+
+        <!-- Summary Cards -->
+        <div class="cards">
+            <div class="card">
+                <div class="number">4</div>
+                <div class="label">Total Checks</div>
+            </div>
+            <div class="card">
+                <div class="number pass">0</div>
+                <div class="label">Passed</div>
+            </div>
+            <div class="card">
+                <div class="number fail">0</div>
+                <div class="label">Failed</div>
+            </div>
+            <div class="card">
+                <div class="number medium">4</div>
+                <div class="label">Warnings</div>
+            </div>
+        </div>
+
+        <!-- Framework Compliance -->
+        <div class="framework-section">
+            <h2 style="color: #38bdf8; margin-bottom: 1rem;">📊 Framework Compliance</h2>
+            
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>SOC 2 Type II — Trust Service Criteria</strong>
+                    <span>0%</span>
+                </div>
+                <div class="framework-bar">
+                    <div class="framework-fill" style="width: 0%;
+                        background: #ef4444;">
+                        0/0 controls
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>ISO 27001:2022 — Annex A Controls</strong>
+                    <span>0%</span>
+                </div>
+                <div class="framework-bar">
+                    <div class="framework-fill" style="width: 0%;
+                        background: #ef4444;">
+                        0/0 controls
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>CIS AWS Foundations Benchmark v3.0</strong>
+                    <span>0%</span>
+                </div>
+                <div class="framework-bar">
+                    <div class="framework-fill" style="width: 0%;
+                        background: #ef4444;">
+                        0/0 controls
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- Findings Table -->
+        <h2 style="color: #38bdf8; margin-bottom: 1rem;">🔍 Detailed Findings</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Check ID</th>
+                    <th>Title</th>
+                    <th>Resource</th>
+                    <th>Status</th>
+                    <th>Severity</th>
+                    <th>Remediation</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td><code>IAM-ERR-ROOT</code></td>
+                    <td>Root MFA Check Error</td>
+                    <td><code>root</code></td>
+                    <td><span class="badge badge-warning">WARNING</span></td>
+                    <td><span class="badge badge-info">INFO</span></td>
+                    <td>Verify IAM permissions.</td>
+                </tr>
+                
+                <tr>
+                    <td><code>IAM-ERR-MFA</code></td>
+                    <td>User MFA Check Error</td>
+                    <td><code>N/A</code></td>
+                    <td><span class="badge badge-warning">WARNING</span></td>
+                    <td><span class="badge badge-info">INFO</span></td>
+                    <td>Verify IAM permissions.</td>
+                </tr>
+                
+                <tr>
+                    <td><code>IAM-ERR-KEYS</code></td>
+                    <td>Access Key Rotation Check Error</td>
+                    <td><code>N/A</code></td>
+                    <td><span class="badge badge-warning">WARNING</span></td>
+                    <td><span class="badge badge-info">INFO</span></td>
+                    <td>Verify IAM permissions.</td>
+                </tr>
+                
+                <tr>
+                    <td><code>IAM-ERR-PWD</code></td>
+                    <td>Password Policy Check Error</td>
+                    <td><code>N/A</code></td>
+                    <td><span class="badge badge-warning">WARNING</span></td>
+                    <td><span class="badge badge-info">INFO</span></td>
+                    <td>Verify IAM permissions.</td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
