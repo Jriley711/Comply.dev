@@ -14,47 +14,85 @@ FIXES applied vs original:
      (matching what the scanner and GitHub Actions actually read)
 """
 import os
-import json
 import requests
-from datetime import datetime
-
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
+
+# ─────────────── Config ───────────────
+
+st.set_page_config(page_title="Comply.dev", layout="wide")
+
+GITHUB_USERNAME = os.getenv("GITHUB_USERNAME", "Jriley711")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "Comply.dev")
+
+REPORT_URL = f"https://raw.githubusercontent.com/{GITHUB_USERNAME}/{GITHUB_REPO}/reports-data/reports/latest.json"
+
+# ─────────────── Load Report ───────────────
+
+@st.cache_data(ttl=60)
+def load_report():
+    try:
+        resp = requests.get(REPORT_URL)
+        st.write("DEBUG status:", resp.status_code)
+
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        st.error("Failed to load report")
+        st.write(str(e))
+        return None
 
 
-# ─────────────────────────────────────────────────────────────
-# Secrets helper
-# ─────────────────────────────────────────────────────────────
+report = load_report()
 
-report = None
+st.write("DEBUG loaded?", report is not None)
 
-if data_source == "📡 Latest scan (GitHub)":
-    with st.spinner("Fetching latest scan from GitHub..."):
-        report = load_report_from_github()
-    if report is None:
-        st.error("🚨 No scan report found from GitHub")
-        st.write("Check if latest.json exists in reports-data branch")
+if not report:
+    st.stop()
 
-elif data_source == "📂 Upload report":
-    if uploaded_file:
-        report = load_report_from_upload(uploaded_file.read())
-    else:
-        st.info("Upload a JSON report file from the sidebar.", icon="📂")
+# ─────────────── Parse Data ───────────────
 
-elif data_source == "⚡ Run live scan":
-    if st.button("▶ Run scan now", type="primary", use_container_width=True):
-        with st.spinner("Running compliance scan… this takes 30–60 seconds."):
-            report = run_live_scan()
-        if report:
-            st.success("Scan complete!", icon="✅")
-    else:
-        st.info("Click **Run scan now** to trigger a live scan.", icon="⚡")
+findings = report.get("findings", [])
+df = pd.DataFrame(findings)
 
+if df.empty:
+    st.warning("No findings in report")
+    st.stop()
 
-# ✅ DEBUG (leave this for now)
-st.write("DEBUG: Report loaded?", report is not None)
+# Fix escaped text if exists
+if "control_domain" in df.columns:
+    df["control_domain"] = df["control_domain"].str.replace("&amp;", "&")
 
-if report:
-    st.write("DEBUG: Findings count:", len(report.get("findings", [])))
+# ─────────────── UI ───────────────
 
+st.title("🛡️ Comply.dev Dashboard")
+
+# Metrics
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric("Total Findings", len(df))
+col2.metric("✅ Passed", (df["status"] == "PASS").sum())
+col3.metric("❌ Failed", (df["status"] == "FAIL").sum())
+col4.metric("⚠️ Warnings", (df["status"] == "WARNING").sum())
+
+st.divider()
+
+# Critical Issues
+critical = df[(df["status"] == "FAIL") & (df["severity"] == "CRITICAL")]
+
+if not critical.empty:
+    st.error("🚨 Critical Issues Detected")
+
+    for _, row in critical.iterrows():
+        st.markdown(f"""
+**{row['title']}**  
+Resource: `{row['resource']}`  
+🔧 {row['remediation']}
+""")
+
+st.divider()
+
+# Table
+st.subheader("All Findings")
+st.dataframe(df)
+``
