@@ -652,7 +652,14 @@ SEVERITY_COLORS = {
     "LOW": "#22c55e",
     "INFO": "#64748b",
 }
-STATUS_COLORS = {"PASS": "#22c55e", "FAIL": "#ef4444", "WARNING": "#eab308"}
+
+STATUS_COLORS = {
+    "PASS": "#22c55e",
+    "FAIL": "#ef4444",
+    "WARNING": "#eab308",
+    "ERROR": "#64748b"
+}
+
 
 PLOTLY_BASE = dict(
     paper_bgcolor="rgba(0,0,0,0)",
@@ -660,7 +667,15 @@ PLOTLY_BASE = dict(
     font=dict(color="#e2e8f0", family="Inter, system-ui, sans-serif"),
 )
 
-STATUS_ICON = {"PASS": "✅", "FAIL": "❌", "WARNING": "⚠️", "NOT RUN": "⬜"}
+
+STATUS_ICON = {
+    "PASS": "✅",
+    "FAIL": "❌",
+    "WARNING": "⚠️",
+    "ERROR": "❗",
+    "NOT RUN": "⬜"
+}
+
 
 def fmt_score_color(score):
     return "#22c55e" if score >= 80 else "#eab308" if score >= 50 else "#ef4444"
@@ -726,11 +741,8 @@ if data_source == "📡 Latest scan (GitHub)":
     with st.spinner("Fetching latest scan from GitHub..."):
         report = load_report_from_github()
     if report is None:
-        st.info(
-            "No scan report found yet. Run the GitHub Actions workflow "
-            "(**Actions → Compliance Scan → Run workflow**) to generate one.",
-            icon="ℹ️",
-        )
+        st.error("🚨 No scan report found from GitHub")
+        st.write("Check if latest.json exists in reports-data branch")
 
 elif data_source == "📂 Upload report":
     if uploaded_file:
@@ -747,27 +759,42 @@ elif data_source == "⚡ Run live scan":
     else:
         st.info("Click **Run scan now** to trigger a live scan.", icon="⚡")
 
-if not report:
+
+# ✅ DEBUG — ADD THIS
+st.write("DEBUG: Report loaded?", report is not None)
+
+if report:
+    st.write("DEBUG: Findings count:", len(report.get("findings", [])))
+    st.write("DEBUG: First record:", report.get("findings", [None])[0])
+
+
+# ✅ SAFER STOP CONDITION
+if report is None:
     st.stop()
 
 # ─────────────────────────────────────────────────────────────
 # Parse report
 # ─────────────────────────────────────────────────────────────
+try:
+    findings   = report.get("findings", [])
+    scan_time  = report.get("scan_time", "Unknown")
+    summary    = report.get("summary", {})
+    fw_summary = summary.get("framework_compliance", {})
 
-findings   = report.get("findings", [])
-scan_time  = report.get("scan_time", "Unknown")
-summary    = report.get("summary", {})
-fw_summary = summary.get("framework_compliance", {})
+    df = pd.DataFrame(findings) if findings else pd.DataFrame()
 
-df = pd.DataFrame(findings) if findings else pd.DataFrame()
+    total    = len(findings)
+    passed   = int(df["status"].eq("PASS").sum()) if "status" in df.columns else 0
+    failed   = int(df["status"].eq("FAIL").sum()) if "status" in df.columns else 0
+    warnings = int(df["status"].eq("WARNING").sum()) if "status" in df.columns else 0
+    critical = int((df["status"].eq("FAIL") & df["severity"].eq("CRITICAL")).sum()) \
+               if {"status", "severity"}.issubset(df.columns) else 0
+    score    = round(passed / total * 100) if total > 0 else 0
 
-total    = len(findings)
-passed   = int(df["status"].eq("PASS").sum()) if "status" in df.columns else 0
-failed   = int(df["status"].eq("FAIL").sum()) if "status" in df.columns else 0
-warnings = int(df["status"].eq("WARNING").sum()) if "status" in df.columns else 0
-critical = int((df["status"].eq("FAIL") & df["severity"].eq("CRITICAL")).sum()) \
-           if {"status", "severity"}.issubset(df.columns) else 0
-score    = round(passed / total * 100) if total > 0 else 0
+except Exception as e:
+    st.error("🚨 App crashed")
+    st.write(str(e))
+    st.stop()
 
 # Build lookup: check_id → list of findings (one check_id can fire multiple times
 # e.g. ENC-S3-PASS once per bucket)
@@ -1036,7 +1063,7 @@ elif page == "🔍 Checks":
     with f2:
         status_filter = st.multiselect(
             "Result",
-            options=["PASS", "FAIL", "WARNING", "NOT RUN"],
+            options=["PASS", "FAIL", "WARNING", "ERROR", "NOT RUN"],
             default=["PASS", "FAIL", "WARNING", "NOT RUN"],
         )
     with f3:
