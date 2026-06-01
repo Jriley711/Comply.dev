@@ -52,19 +52,20 @@ jobs:
           mkdir -p reports
           echo "--- Running scan ---"
           python main.py scan
-          echo "--- Scan exit code: $? ---"
           echo "--- Files in reports/ ---"
           ls -la reports/
 
       - name: Normalize report filename to latest.json
         run: |
           LATEST=$(ls -t reports/comply_report_*.json 2>/dev/null | head -1)
+
           if [ -z "$LATEST" ]; then
             echo "No report file found — scan may have failed."
             exit 1
           fi
+
+          # ✅ Move newest report to latest.json
           cp "$LATEST" reports/latest.json
-          echo "Report saved: $LATEST → reports/latest.json"
 
       - name: Publish report to reports-data branch
         run: |
@@ -73,21 +74,28 @@ jobs:
 
           cp reports/latest.json /tmp/latest.json
 
-          # ✅ Always sync branch safely
+          # ✅ Fetch and switch to reports branch
           git fetch origin reports-data || true
           git checkout -B reports-data origin/reports-data || git checkout --orphan reports-data
 
-          # ✅ Clean working directory to avoid overwrite errors
+          # ✅ Clean workspace
           git rm -rf . --quiet || true
           git clean -fd || true
 
           mkdir -p reports
+
+          # ✅ COPY previous.json FIRST (if exists)
+          if [ -f reports/latest.json ]; then
+            cp reports/latest.json reports/previous.json
+          fi
+
+          # ✅ Move new report in
           cp /tmp/latest.json reports/latest.json
 
-          git add reports/latest.json
+          git add reports/latest.json || true
+          git add reports/previous.json || true
 
           git diff --staged --quiet || \
             git commit -m "chore: compliance scan $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-          # ✅ Force push (expected for generated data)
           git push origin reports-data --force
