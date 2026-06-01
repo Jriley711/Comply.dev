@@ -1210,3 +1210,41 @@ elif page == "🔍 Checks":
                                 f"<div class='check-reasoning'>{reasoning}</div>",
                                 unsafe_allow_html=True,
                             )
+
+
+import sysimport
+import json
+from datetime import datetime
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "scan":
+    from comply.scanner import ComplyScanner
+    import boto3
+
+    print("Starting compliance scan...")
+
+    session = boto3.Session()
+
+    github_repos = os.getenv("GITHUB_REPOS", "")
+    github_repos = [r.strip() for r in github_repos.split(",")] if github_repos else []
+
+    scanner = ComplyScanner(
+        aws_session=session,
+        github_token=os.getenv("GITHUB_TOKEN"),
+        github_repos=github_repos,
+    )
+
+    results = scanner.run_full_scan()
+
+    # ✅ critical missing piece
+    os.makedirs("reports", exist_ok=True)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    filepath = f"reports/comply_report_{timestamp}.json"
+
+    with open(filepath, "w") as f:
+        json.dump(results, f, indent=2, default=str)
+
+    print(f"✅ Report saved: {filepath}")
+
+    sys.exit(0)
+
