@@ -243,7 +243,6 @@ PLOTLY_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
     font=dict(color="#e2e8f0", family="Inter, system-ui, sans-serif"),
-    margin=dict(t=20, b=20, l=20, r=20),
 )
 
 
@@ -443,10 +442,12 @@ for i, (fw_key, fw_label) in enumerate(FW_DISPLAY.items()):
         },
     ))
     fig.update_layout(
-        height=200,
-        **PLOTLY_LAYOUT,
-        margin=dict(t=40, b=10, l=30, r=30),
-    )
+            height=200,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#e2e8f0", family="Inter, system-ui, sans-serif"),
+            margin=dict(t=40, b=10, l=30, r=30),
+        )
 
     with fw_cols[i]:
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
