@@ -65,14 +65,15 @@ def scan(aws_profile, region, github_token, github_repos, output_dir, skip_aws, 
 
     results = scanner.run_full_scan()
 
-    # Exit code based on findings
+    # Report critical count but do NOT exit with code 1 —
+    # the workflow needs to continue to save and publish the report
     critical_count = sum(
         1 for f in results["findings"]
         if f.get("severity") == "CRITICAL" and f.get("status") == "FAIL"
     )
 
-     if critical_count > 0:
-        click.echo(f"\n⚠️  {critical_count} CRITICAL findings detected.")
+    if critical_count > 0:
+        click.echo(f"\n⚠️  {critical_count} CRITICAL findings detected. Review the report.")
 
 
 @cli.command()
@@ -88,7 +89,6 @@ def scan_repo(repo, github_token):
         click.echo("❌ GitHub token required. Set GITHUB_TOKEN env var or use --github-token.")
         sys.exit(1)
 
-    # FIX: corrected import paths to match actual module structure
     from comply.github.repo_scanner import GitHubRepoScanner
     from comply.reports.generator import ReportGenerator
     from rich.console import Console
