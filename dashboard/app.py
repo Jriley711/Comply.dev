@@ -95,4 +95,3 @@ st.divider()
 # Table
 st.subheader("All Findings")
 st.dataframe(df)
-``
