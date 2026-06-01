@@ -1,0 +1,95 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Comply.dev — Automated Compliance Scan
+#
+# Runs on a weekly schedule AND can be triggered manually from the Actions tab.
+# Results are committed as reports/latest.json on the `reports-data` branch
+# so the Streamlit dashboard can always fetch the freshest data.
+#
+# REQUIRED SECRETS (GitHub repo → Settings → Secrets and variables → Actions):
+#   AWS_ACCESS_KEY_ID       — IAM user access key ID
+#   AWS_SECRET_ACCESS_KEY   — IAM user secret access key
+#   AWS_DEFAULT_REGION      — e.g. us-east-1
+#   COMPLY_GITHUB_TOKEN     — Personal Access Token (repo or public_repo scope)
+#   GITHUB_REPOS            — comma-separated owner/repo values to scan
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Compliance Scan
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Every Monday at 06:00 UTC
+  workflow_dispatch:        # Manual trigger from Actions tab
+
+jobs:
+  scan:
+    name: Run compliance scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # Needed to push the report to reports-data branch
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # Full history so we can switch branches
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run full compliance scan
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION:    ${{ secrets.AWS_DEFAULT_REGION }}
+          # FIX: renamed from GitHub_TOKEN → GITHUB_TOKEN to match what the scanner reads
+          GITHUB_TOKEN:          ${{ secrets.COMPLY_GITHUB_TOKEN }}
+          # FIX: renamed from GitHub_REPOS → GITHUB_REPOS to match what the scanner reads
+          GITHUB_REPOS:          ${{ secrets.GITHUB_REPOS }}
+        run: |
+          mkdir -p reports
+          python main.py scan || true
+          # "|| true" prevents a CRITICAL findings exit-code from failing the workflow.
+          # The findings are still recorded in the report file.
+
+      - name: Normalise report filename to latest.json
+        run: |
+          LATEST=$(ls -t reports/comply_report_*.json 2>/dev/null | head -1)
+          if [ -z "$LATEST" ]; then
+            echo "No report file found — scan may have failed."
+            exit 1
+          fi
+          cp "$LATEST" reports/latest.json
+          echo "Report saved: $LATEST → reports/latest.json"
+
+      - name: Publish report to reports-data branch
+        run: |
+          git config user.name  "comply-bot"
+          git config user.email "comply-bot@users.noreply.github.com"
+
+          # Save the report before switching branches
+          cp reports/latest.json /tmp/latest.json
+
+          # Create or switch to the reports-data branch (orphan on first run)
+          git fetch origin reports-data 2>/dev/null && \
+            git checkout reports-data || \
+            git checkout --orphan reports-data
+
+          # On the orphan branch, clear everything first
+          if git show-ref --quiet refs/heads/reports-data 2>/dev/null; then
+            # Branch already exists — keep only what we need
+            git rm -rf . --quiet 2>/dev/null || true
+          fi
+
+          mkdir -p reports
+          cp /tmp/latest.json reports/latest.json
+
+          git add reports/latest.json
+          git diff --staged --quiet && echo "No changes to commit." || \
+            git commit -m "chore: compliance scan $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin reports-data
