@@ -17,21 +17,21 @@ name: Compliance Scan
 
 on:
   schedule:
-    - cron: "0 6 * * 1"   # Every Monday at 06:00 UTC
-  workflow_dispatch:        # Manual trigger from Actions tab
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 jobs:
   scan:
     name: Run compliance scan
     runs-on: ubuntu-latest
     permissions:
-      contents: write       # Needed to push the report to reports-data branch
+      contents: write
 
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0    # Full history so we can switch branches
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -47,18 +47,20 @@ jobs:
           AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION:    ${{ secrets.AWS_DEFAULT_REGION }}
-          # FIX: renamed from GitHub_TOKEN → GITHUB_TOKEN to match what the scanner reads
           GITHUB_TOKEN:          ${{ secrets.COMPLY_GITHUB_TOKEN }}
-          # FIX: renamed from GitHub_REPOS → GITHUB_REPOS to match what the scanner reads
           GITHUB_REPOS:          ${{ secrets.GITHUB_REPOS }}
         run: |
           mkdir -p reports
-          python main.py scan || true
-          # "|| true" prevents a CRITICAL findings exit-code from failing the workflow.
-          # The findings are still recorded in the report file.
+          echo "--- Running scan ---"
+          python main.py scan
+          echo "--- Scan exit code: $? ---"
+          echo "--- Files in reports/ ---"
+          ls -la reports/
 
       - name: Normalise report filename to latest.json
         run: |
+          echo "--- Files in reports/ ---"
+          ls -la reports/
           LATEST=$(ls -t reports/comply_report_*.json 2>/dev/null | head -1)
           if [ -z "$LATEST" ]; then
             echo "No report file found — scan may have failed."
@@ -72,19 +74,13 @@ jobs:
           git config user.name  "comply-bot"
           git config user.email "comply-bot@users.noreply.github.com"
 
-          # Save the report before switching branches
           cp reports/latest.json /tmp/latest.json
 
-          # Create or switch to the reports-data branch (orphan on first run)
           git fetch origin reports-data 2>/dev/null && \
             git checkout reports-data || \
             git checkout --orphan reports-data
 
-          # On the orphan branch, clear everything first
-          if git show-ref --quiet refs/heads/reports-data 2>/dev/null; then
-            # Branch already exists — keep only what we need
-            git rm -rf . --quiet 2>/dev/null || true
-          fi
+          git rm -rf . --quiet 2>/dev/null || true
 
           mkdir -p reports
           cp /tmp/latest.json reports/latest.json
