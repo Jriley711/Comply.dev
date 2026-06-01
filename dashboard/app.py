@@ -27,13 +27,34 @@ import plotly.graph_objects as go
 # Secrets helper
 # ─────────────────────────────────────────────────────────────
 
-def get_secret(key: str, default: str = "") -> str:
-    try:
-        return st.secrets[key]
-    except (KeyError, FileNotFoundError):
-        return os.getenv(key, default)
+report = None
+
+if data_source == "📡 Latest scan (GitHub)":
+    with st.spinner("Fetching latest scan from GitHub..."):
+        report = load_report_from_github()
+    if report is None:
+        st.error("🚨 No scan report found from GitHub")
+        st.write("Check if latest.json exists in reports-data branch")
+
+elif data_source == "📂 Upload report":
+    if uploaded_file:
+        report = load_report_from_upload(uploaded_file.read())
+    else:
+        st.info("Upload a JSON report file from the sidebar.", icon="📂")
+
+elif data_source == "⚡ Run live scan":
+    if st.button("▶ Run scan now", type="primary", use_container_width=True):
+        with st.spinner("Running compliance scan… this takes 30–60 seconds."):
+            report = run_live_scan()
+        if report:
+            st.success("Scan complete!", icon="✅")
+    else:
+        st.info("Click **Run scan now** to trigger a live scan.", icon="⚡")
 
 
-AWS_ACCESS_KEY_ID     = get_secret("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = get_secret("AWS_SECRET_ACCESS_KEY")
-AWS_DEFAULT_REGION    = get_secret("AWS_DEFAULT_REGION", "us-east-1")
+# ✅ DEBUG (leave this for now)
+st.write("DEBUG: Report loaded?", report is not None)
+
+if report:
+    st.write("DEBUG: Findings count:", len(report.get("findings", [])))
+
