@@ -1210,4 +1210,3 @@ elif page == "🔍 Checks":
                                 f"<div class='check-reasoning'>{reasoning}</div>",
                                 unsafe_allow_html=True,
                             )
-``
