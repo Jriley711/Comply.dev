@@ -15,6 +15,7 @@ class ReportGenerator:
         self.findings = findings
         self.output_dir = output_dir
         self.timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        self.scan_time = datetime.now(timezone.utc).isoformat()
         os.makedirs(output_dir, exist_ok=True)
 
     def get_summary(self) -> dict:
@@ -30,7 +31,7 @@ class ReportGenerator:
             by_severity[severity] = by_severity.get(severity, 0) + 1
 
         return {
-            "scan_timestamp": datetime.now(timezone.utc).isoformat(),
+            "scan_timestamp": self.scan_time,
             "total_findings": total,
             "by_status": by_status,
             "by_severity": by_severity,
@@ -38,9 +39,15 @@ class ReportGenerator:
         }
 
     def generate_json(self) -> str:
-        """Generate JSON report and return file path."""
+        """Generate JSON report and return file path.
+
+        FIX: report now includes top-level scan_time so the dashboard
+        can read it directly from report["scan_time"].
+        """
+        summary = self.get_summary()
         report = {
-            "summary": self.get_summary(),
+            "scan_time": self.scan_time,   # top-level for dashboard compatibility
+            "summary": summary,
             "findings": self.findings,
         }
 
@@ -86,15 +93,12 @@ REPORT_HTML_TEMPLATE = """<!DOCTYPE html>
         .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; text-align: center; }
         .card .number { font-size: 2.5rem; font-weight: bold; }
         .card .label { color: #94a3b8; font-size: 0.9rem; }
-        .critical { color: #ef4444; }
-        .high { color: #f97316; }
-        .medium { color: #eab308; }
-        .low { color: #22c55e; }
-        .pass { color: #22c55e; }
-        .fail { color: #ef4444; }
+        .critical { color: #ef4444; } .high { color: #f97316; }
+        .medium { color: #eab308; } .low { color: #22c55e; }
+        .pass { color: #22c55e; } .fail { color: #ef4444; }
         .framework-section { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
         .framework-bar { background: #334155; border-radius: 8px; height: 24px; margin: 0.5rem 0; overflow: hidden; }
-        .framework-fill { height: 100%; border-radius: 8px; transition: width 0.5s ease; display: flex;
+        .framework-fill { height: 100%; border-radius: 8px; display: flex;
                          align-items: center; padding-left: 8px; font-size: 0.8rem; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         th { background: #334155; color: #38bdf8; padding: 12px; text-align: left; }
@@ -108,6 +112,7 @@ REPORT_HTML_TEMPLATE = """<!DOCTYPE html>
         .badge-pass { background: #052e16; color: #22c55e; }
         .badge-fail { background: #450a0a; color: #ef4444; }
         .badge-warning { background: #422006; color: #eab308; }
+        .badge-info { background: #1e293b; color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -115,7 +120,6 @@ REPORT_HTML_TEMPLATE = """<!DOCTYPE html>
         <h1>🛡️ Comply.dev — Compliance Report</h1>
         <p class="subtitle">Generated {{ timestamp }}</p>
 
-        <!-- Summary Cards -->
         <div class="cards">
             <div class="card">
                 <div class="number">{{ summary.total_findings }}</div>
@@ -135,7 +139,6 @@ REPORT_HTML_TEMPLATE = """<!DOCTYPE html>
             </div>
         </div>
 
-        <!-- Framework Compliance -->
         <div class="framework-section">
             <h2 style="color: #38bdf8; margin-bottom: 1rem;">📊 Framework Compliance</h2>
             {% for key, fw in summary.framework_compliance.items() %}
@@ -154,17 +157,12 @@ REPORT_HTML_TEMPLATE = """<!DOCTYPE html>
             {% endfor %}
         </div>
 
-        <!-- Findings Table -->
         <h2 style="color: #38bdf8; margin-bottom: 1rem;">🔍 Detailed Findings</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Check ID</th>
-                    <th>Title</th>
-                    <th>Resource</th>
-                    <th>Status</th>
-                    <th>Severity</th>
-                    <th>Remediation</th>
+                    <th>Check ID</th><th>Title</th><th>Resource</th>
+                    <th>Status</th><th>Severity</th><th>Remediation</th>
                 </tr>
             </thead>
             <tbody>

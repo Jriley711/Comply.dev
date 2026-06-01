@@ -1,5 +1,7 @@
 """Main scanner orchestrator — runs all compliance checks."""
 
+from datetime import datetime, timezone
+
 import boto3
 from rich.console import Console
 from rich.table import Table
@@ -67,7 +69,19 @@ class ComplyScanner:
         return findings
 
     def run_full_scan(self) -> dict:
-        """Run all scans, generate reports, and display summary."""
+        """Run all scans, generate reports, and display summary.
+
+        Returns a dict compatible with the Streamlit dashboard:
+          {
+            "scan_time": "<ISO timestamp>",
+            "findings":  [ ... ],
+            "summary":   { ... },
+            "json_report": "<path>",
+            "html_report": "<path>",
+          }
+        """
+        scan_time = datetime.now(timezone.utc).isoformat()
+
         console.print()
         console.print(Panel.fit(
             "[bold cyan]🛡️  Comply.dev — Cloud Compliance Scanner[/bold cyan]\n"
@@ -93,8 +107,11 @@ class ComplyScanner:
         # Display summary
         self._display_summary()
 
+        # FIX: include scan_time so the dashboard can display it
         return {
+            "scan_time": scan_time,
             "findings": self.all_findings,
+            "summary": reporter.get_summary(),
             "json_report": json_path,
             "html_report": html_path,
         }
@@ -104,7 +121,6 @@ class ComplyScanner:
         console.print()
         summary = get_framework_summary(self.all_findings)
 
-        # Framework compliance table
         table = Table(title="📊 Framework Compliance Summary", show_lines=True)
         table.add_column("Framework", style="cyan", no_wrap=True)
         table.add_column("Score", justify="center")
@@ -125,7 +141,6 @@ class ComplyScanner:
 
         console.print(table)
 
-        # Severity breakdown
         console.print()
         severity_table = Table(title="🚨 Findings by Severity")
         severity_table.add_column("Severity", style="bold")
@@ -137,7 +152,10 @@ class ComplyScanner:
             severity_counts[sev] = severity_counts.get(sev, 0) + 1
 
         severity_order = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
-        severity_colors = {"CRITICAL": "red", "HIGH": "orange3", "MEDIUM": "yellow", "LOW": "green", "INFO": "dim"}
+        severity_colors = {
+            "CRITICAL": "red", "HIGH": "orange3",
+            "MEDIUM": "yellow", "LOW": "green", "INFO": "dim",
+        }
 
         for sev in severity_order:
             count = severity_counts.get(sev, 0)
@@ -147,4 +165,3 @@ class ComplyScanner:
 
         console.print(severity_table)
         console.print()
-
