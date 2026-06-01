@@ -14,84 +14,174 @@ FIXES applied vs original:
      (matching what the scanner and GitHub Actions actually read)
 """
 import os
+import json
 import requests
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
-# ─────────────── Config ───────────────
+# ─────────────────────────────
+# CONFIG
+# ─────────────────────────────
 
 st.set_page_config(page_title="Comply.dev", layout="wide")
 
 GITHUB_USERNAME = os.getenv("GITHUB_USERNAME", "Jriley711")
 GITHUB_REPO = os.getenv("GITHUB_REPO", "Comply.dev")
 
-REPORT_URL = f"https://raw.githubusercontent.com/{GITHUB_USERNAME}/{GITHUB_REPO}/reports-data/reports/latest.json"
+BASE_URL = f"https://raw.githubusercontent.com/{GITHUB_USERNAME}/{GITHUB_REPO}/reports-data/reports"
 
-# ─────────────── Load Report ───────────────
+LATEST_URL = f"{BASE_URL}/latest.json"
+PREVIOUS_URL = f"{BASE_URL}/previous.json"
+
+# ─────────────────────────────
+# LOAD DATA
+# ─────────────────────────────
 
 @st.cache_data(ttl=60)
-def load_report():
+def load_json(url):
     try:
-        resp = requests.get(REPORT_URL)
-        st.write("DEBUG status:", resp.status_code)
-
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        st.error("Failed to load report")
-        st.write(str(e))
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            return r.json()
+        return None
+    except:
         return None
 
 
-report = load_report()
+latest = load_json(LATEST_URL)
+previous = load_json(PREVIOUS_URL)
 
-st.write("DEBUG loaded?", report is not None)
+st.write("DEBUG latest loaded:", latest is not None)
+st.write("DEBUG previous loaded:", previous is not None)
 
-if not report:
+if not latest:
+    st.error("❌ Could not load latest report")
     st.stop()
 
-# ─────────────── Parse Data ───────────────
+# ─────────────────────────────
+# PARSE DATA
+# ─────────────────────────────
 
-findings = report.get("findings", [])
-df = pd.DataFrame(findings)
+df = pd.DataFrame(latest.get("findings", []))
 
 if df.empty:
-    st.warning("No findings in report")
+    st.warning("No findings available")
     st.stop()
 
-# Fix escaped text if exists
+# Fix HTML encoding if present
 if "control_domain" in df.columns:
     df["control_domain"] = df["control_domain"].str.replace("&amp;", "&")
 
-# ─────────────── UI ───────────────
+# ─────────────────────────────
+# DRIFT DETECTION
+# ─────────────────────────────
+
+def compare_reports(curr, prev):
+    if not prev:
+        return set(), set(), set()
+
+    curr_set = set((f["check_id"], f.get("resource")) for f in curr.get("findings", []))
+    prev_set = set((f["check_id"], f.get("resource")) for f in prev.get("findings", []))
+
+    new = curr_set - prev_set
+    resolved = prev_set - curr_set
+    persistent = curr_set & prev_set
+
+    return new, resolved, persistent
+
+
+new_findings, resolved_findings, persistent_findings = compare_reports(latest, previous)
+
+# ─────────────────────────────
+# COMPLIANCE SCORE
+# ─────────────────────────────
+
+def get_score(report):
+    findings = report.get("findings", [])
+    if not findings:
+        return 0
+    
+    df = pd.DataFrame(findings)
+    passed = (df["status"] == "PASS").sum()
+    total = len(df)
+    
+    return round((passed / total) * 100, 0)
+
+
+current_score = get_score(latest)
+previous_score = get_score(previous) if previous else None
+
+# ─────────────────────────────
+# UI
+# ─────────────────────────────
 
 st.title("🛡️ Comply.dev Dashboard")
 
-# Metrics
-col1, col2, col3, col4 = st.columns(4)
+# ─────────────
+# SCORE + TREND
+# ─────────────
 
-col1.metric("Total Findings", len(df))
-col2.metric("✅ Passed", (df["status"] == "PASS").sum())
-col3.metric("❌ Failed", (df["status"] == "FAIL").sum())
-col4.metric("⚠️ Warnings", (df["status"] == "WARNING").sum())
+st.subheader("📈 Compliance Score")
+
+score_col1, score_col2 = st.columns(2)
+
+score_col1.metric("Current Score", f"{current_score}%")
+
+if previous_score is not None:
+    delta = current_score - previous_score
+    score_col2.metric("Change", f"{delta}%", delta=delta)
+else:
+    score_col2.metric("Change", "N/A")
+
+# Trend chart
+if previous:
+    trend_df = pd.DataFrame({
+        "Scan": ["Previous", "Current"],
+        "Score": [previous_score, current_score]
+    })
+    
+    fig = px.line(trend_df, x="Scan", y="Score", markers=True, title="Compliance Score Trend")
+    st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
 
-# Critical Issues
+# ─────────────
+# DRIFT SECTION
+# ─────────────
+
+st.subheader("📊 Changes Since Last Scan")
+
+c1, c2, c3 = st.columns(3)
+
+c1.metric("❌ New Issues", len(new_findings))
+c2.metric("✅ Resolved", len(resolved_findings))
+c3.metric("🔁 Still Present", len(persistent_findings))
+
+st.divider()
+
+# ─────────────
+# CRITICAL ISSUES
+# ─────────────
+
 critical = df[(df["status"] == "FAIL") & (df["severity"] == "CRITICAL")]
 
 if not critical.empty:
-    st.error("🚨 Critical Issues Detected")
+    st.error("🚨 CRITICAL ISSUES DETECTED")
 
     for _, row in critical.iterrows():
         st.markdown(f"""
 **{row['title']}**  
 Resource: `{row['resource']}`  
-🔧 {row['remediation']}
+🔧 {row.get('remediation', 'No remediation provided')}
 """)
 
 st.divider()
 
-# Table
-st.subheader("All Findings")
+# ─────────────
+# FINDINGS TABLE
+# ─────────────
+
+st.subheader("📋 All Findings")
+
 st.dataframe(df)
