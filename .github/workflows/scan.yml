@@ -12,7 +12,6 @@
 #   COMPLY_GITHUB_TOKEN     — Personal Access Token (repo or public_repo scope)
 #   GITHUB_REPOS            — comma-separated owner/repo values to scan
 # ──────────────────────────────────────────────────────────────────────────────
-
 name: Compliance Scan
 
 on:
@@ -57,7 +56,7 @@ jobs:
           echo "--- Files in reports/ ---"
           ls -la reports/
 
-      - name: Normalise report filename to latest.json
+      - name: Normalize report filename to latest.json
         run: |
           LATEST=$(ls -t reports/comply_report_*.json 2>/dev/null | head -1)
           if [ -z "$LATEST" ]; then
@@ -74,16 +73,21 @@ jobs:
 
           cp reports/latest.json /tmp/latest.json
 
-          git fetch origin reports-data 2>/dev/null && \
-            git checkout reports-data || \
-            git checkout --orphan reports-data
+          # ✅ Always sync branch safely
+          git fetch origin reports-data || true
+          git checkout -B reports-data origin/reports-data || git checkout --orphan reports-data
 
-          git rm -rf . --quiet 2>/dev/null || true
+          # ✅ Clean working directory to avoid overwrite errors
+          git rm -rf . --quiet || true
+          git clean -fd || true
 
           mkdir -p reports
           cp /tmp/latest.json reports/latest.json
 
           git add reports/latest.json
-          git diff --staged --quiet && echo "No changes to commit." || \
+
+          git diff --staged --quiet || \
             git commit -m "chore: compliance scan $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push origin reports-data
+
+          # ✅ Force push (expected for generated data)
+          git push origin reports-data --force
