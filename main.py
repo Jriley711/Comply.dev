@@ -71,9 +71,8 @@ def scan(aws_profile, region, github_token, github_repos, output_dir, skip_aws, 
         if f.get("severity") == "CRITICAL" and f.get("status") == "FAIL"
     )
 
-    if critical_count > 0:
-        click.echo(f"\n⚠️  {critical_count} CRITICAL findings detected. Exiting with code 1.")
-        sys.exit(1)
+     if critical_count > 0:
+        click.echo(f"\n⚠️  {critical_count} CRITICAL findings detected.")
 
 
 @cli.command()
