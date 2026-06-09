@@ -3,9 +3,9 @@
 import streamlit as st
 import pandas as pd
 
-from dashboard.data import load_latest, load_from_upload, parse_report, format_scan_time
-from dashboard.components import finding_expander, severity_badge, status_badge, metric_card
-from dashboard.config import SEVERITY_ORDER, SEVERITY_COLORS, STATUS_COLORS
+from data import load_latest, load_from_upload, parse_report, format_scan_time
+from components import finding_expander, severity_badge, status_badge, metric_card
+from config import SEVERITY_ORDER, SEVERITY_COLORS, STATUS_COLORS
 
 st.markdown("## 🔍 Findings")
 
