@@ -3,8 +3,8 @@
 import streamlit as st
 import os
 
-from dashboard.config import get_secret, mask
-from dashboard.data import load_from_upload, parse_report
+from config import get_secret, mask
+from data import load_from_upload, parse_report
 
 st.markdown("## ⚡ Run Scan")
 
