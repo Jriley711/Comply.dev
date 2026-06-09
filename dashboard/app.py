@@ -70,8 +70,8 @@ with st.sidebar:
     )
 
 # ── Load data ──────────────────────────────────────────────────
-from dashboard.data import load_latest, load_previous, parse_report, format_scan_time
-from dashboard.components import (
+from data import load_latest, load_previous, parse_report, format_scan_time
+from components import (
     score_gauge, severity_bar_chart, framework_scores_chart,
     status_donut, metric_card,
 )
@@ -158,7 +158,7 @@ if fw_summary:
     )
 
     fw_cols = st.columns(len(fw_summary))
-    from dashboard.config import FRAMEWORK_LABELS
+    from config import FRAMEWORK_LABELS
     for i, (fw_key, fw_data) in enumerate(fw_summary.items()):
         score = fw_data.get("compliance_score", 0)
         color = "#1D9E75" if score >= 80 else "#EF9F27" if score >= 50 else "#E24B4A"
@@ -179,7 +179,7 @@ if not df.empty and "status" in df.columns and "severity" in df.columns:
     critical_df = df[(df["status"] == "FAIL") & (df["severity"] == "CRITICAL")]
     if not critical_df.empty:
         st.markdown("##### Critical findings")
-        from dashboard.components import finding_expander
+        from components import finding_expander
         for _, row in critical_df.head(5).iterrows():
             finding_expander(row)
         if len(critical_df) > 5:
