@@ -1,187 +1,186 @@
 """
-Comply.dev — Streamlit Compliance Dashboard
-
-Credentials are read from st.secrets (Streamlit Cloud) first,
-then fall back to environment variables for local development.
-
-FIXES applied vs original:
-  1. REPORT_URL typo: raw.GitHubusercontent → raw.githubusercontent
-  2. load_report_from_github: now reads top-level scan_time from JSON
-  3. run_live_scan: fixed github_repos casing (was GitHub_repos)
-  4. Framework gauge: fixed DataFrame column filtering logic
-  5. applymap → map (pandas ≥ 2.1 deprecation)
-  6. Secret keys normalised: GH_TOKEN→GITHUB_TOKEN, GH_REPOS→GITHUB_REPOS
-     (matching what the scanner and GitHub Actions actually read)
+Comply.dev — Cloud Compliance Dashboard
+Streamlit multi-page app. Entry point.
 """
-import os
-import json
-import requests
+
 import streamlit as st
-import pandas as pd
-import plotly.express as px
 
-# ─────────────────────────────
-# CONFIG
-# ─────────────────────────────
+st.set_page_config(
+    page_title="Comply.dev",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-st.set_page_config(page_title="Comply.dev", layout="wide")
+# ── Global styles ──────────────────────────────────────────────
+st.markdown("""
+<style>
+    /* Sidebar nav */
+    [data-testid="stSidebarNav"] { padding-top: 1rem; }
 
-GITHUB_USERNAME = os.getenv("GITHUB_USERNAME", "Jriley711")
-GITHUB_REPO = os.getenv("GITHUB_REPO", "Comply.dev")
+    /* Remove default top padding */
+    .block-container { padding-top: 1.5rem; }
 
-BASE_URL = f"https://raw.githubusercontent.com/{GITHUB_USERNAME}/{GITHUB_REPO}/reports-data/reports"
+    /* Metric cards */
+    [data-testid="stMetric"] {
+        background: #F1EFE8;
+        border-radius: 8px;
+        padding: 12px 16px;
+    }
 
-LATEST_URL = f"{BASE_URL}/latest.json"
-PREVIOUS_URL = f"{BASE_URL}/previous.json"
+    /* Expander headers */
+    .streamlit-expanderHeader {
+        font-size: 14px !important;
+        font-weight: 500 !important;
+    }
 
-# ─────────────────────────────
-# LOAD DATA
-# ─────────────────────────────
+    /* Dataframe — tighten it up */
+    [data-testid="stDataFrame"] { border-radius: 8px; }
 
-@st.cache_data(ttl=60)
-def load_json(url):
-    try:
-        r = requests.get(url, timeout=5)
-        if r.status_code == 200:
-            return r.json()
-        return None
-    except:
-        return None
+    /* Hide Streamlit branding */
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    header { visibility: hidden; }
+</style>
+""", unsafe_allow_html=True)
 
+# ── Sidebar ────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("## 🛡️ Comply.dev")
+    st.markdown(
+        "<div style='font-size:12px;color:#888780;margin-bottom:1.5rem;'>"
+        "Cloud compliance automation<br>for AWS &amp; GitHub"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("---")
+    st.markdown("**Navigation**")
+    st.page_link("app.py",                        label="Overview",    icon="🏠")
+    st.page_link("pages/1_findings.py",            label="Findings",    icon="🔍")
+    st.page_link("pages/2_frameworks.py",          label="Frameworks",  icon="📋")
+    st.page_link("pages/3_drift.py",               label="Drift",       icon="📊")
+    st.page_link("pages/4_scan.py",                label="Run Scan",    icon="⚡")
+    st.markdown("---")
+    st.markdown(
+        "<div style='font-size:11px;color:#B4B2A9;'>"
+        "<a href='https://github.com/Jriley711/Comply.dev' "
+        "style='color:#B4B2A9;text-decoration:none;'>github.com/Jriley711/Comply.dev</a>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
-latest = load_json(LATEST_URL)
-previous = load_json(PREVIOUS_URL)
+# ── Load data ──────────────────────────────────────────────────
+from dashboard.data import load_latest, load_previous, parse_report, format_scan_time
+from dashboard.components import (
+    score_gauge, severity_bar_chart, framework_scores_chart,
+    status_donut, metric_card,
+)
 
-st.write("DEBUG latest loaded:", latest is not None)
-st.write("DEBUG previous loaded:", previous is not None)
+with st.spinner("Loading latest scan report…"):
+    latest   = load_latest()
+    previous = load_previous()
 
-if not latest:
-    st.error("❌ Could not load latest report")
+if latest is None:
+    st.error("No scan report found. Run a scan or upload a report.")
+    st.markdown(
+        "Go to **⚡ Run Scan** in the sidebar to trigger your first scan, "
+        "or upload a JSON report directly."
+    )
     st.stop()
 
-# ─────────────────────────────
-# PARSE DATA
-# ─────────────────────────────
+data = parse_report(latest)
+df   = data["df"]
 
-df = pd.DataFrame(latest.get("findings", []))
+# ── Header ─────────────────────────────────────────────────────
+col_title, col_time = st.columns([3, 1])
+with col_title:
+    st.markdown("## Compliance Overview")
+with col_time:
+    st.markdown(
+        f"<div style='text-align:right;font-size:12px;color:#888780;padding-top:12px;'>"
+        f"Last scan: {format_scan_time(data['scan_time'])}</div>",
+        unsafe_allow_html=True,
+    )
 
-if df.empty:
-    st.warning("No findings available")
-    st.stop()
+# ── Critical alert banner ───────────────────────────────────────
+if data["critical"] > 0:
+    st.error(
+        f"🚨 **{data['critical']} critical issue{'s' if data['critical'] != 1 else ''} require immediate attention.** "
+        f"See the Findings page for details."
+    )
 
-# Fix HTML encoding if present
-if "control_domain" in df.columns:
-    df["control_domain"] = df["control_domain"].str.replace("&amp;", "&")
+# ── Top metrics ─────────────────────────────────────────────────
+m1, m2, m3, m4, m5 = st.columns(5)
+with m1:
+    metric_card("Compliance score", f"{data['score']}%",
+                color="#1D9E75" if data["score"] >= 80 else "#EF9F27" if data["score"] >= 50 else "#E24B4A")
+with m2:
+    metric_card("Total checks", str(data["total"]))
+with m3:
+    metric_card("Passed", str(data["passed"]), color="#1D9E75")
+with m4:
+    metric_card("Failed", str(data["failed"]), color="#E24B4A")
+with m5:
+    metric_card("Warnings", str(data["warnings"]), color="#EF9F27")
 
-# ─────────────────────────────
-# DRIFT DETECTION
-# ─────────────────────────────
+st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
 
-def compare_reports(curr, prev):
-    if not prev:
-        return set(), set(), set()
+# ── Charts row ──────────────────────────────────────────────────
+ch1, ch2, ch3 = st.columns([1, 1, 1])
 
-    curr_set = set((f["check_id"], f.get("resource")) for f in curr.get("findings", []))
-    prev_set = set((f["check_id"], f.get("resource")) for f in prev.get("findings", []))
+with ch1:
+    st.markdown("##### Compliance score")
+    st.plotly_chart(score_gauge(data["score"]), use_container_width=True, config={"displayModeBar": False})
 
-    new = curr_set - prev_set
-    resolved = prev_set - curr_set
-    persistent = curr_set & prev_set
+with ch2:
+    st.markdown("##### Findings by severity")
+    st.plotly_chart(severity_bar_chart(df), use_container_width=True, config={"displayModeBar": False})
 
-    return new, resolved, persistent
+with ch3:
+    st.markdown("##### Pass / Fail / Warning")
+    st.plotly_chart(
+        status_donut(data["passed"], data["failed"], data["warnings"]),
+        use_container_width=True,
+        config={"displayModeBar": False},
+    )
 
+st.markdown("---")
 
-new_findings, resolved_findings, persistent_findings = compare_reports(latest, previous)
+# ── Framework scores ────────────────────────────────────────────
+st.markdown("##### Framework compliance")
 
-# ─────────────────────────────
-# COMPLIANCE SCORE
-# ─────────────────────────────
+fw_summary = data["framework_summary"]
+if fw_summary:
+    st.plotly_chart(
+        framework_scores_chart(fw_summary),
+        use_container_width=True,
+        config={"displayModeBar": False},
+    )
 
-def get_score(report):
-    findings = report.get("findings", [])
-    if not findings:
-        return 0
-    
-    df = pd.DataFrame(findings)
-    passed = (df["status"] == "PASS").sum()
-    total = len(df)
-    
-    return round((passed / total) * 100, 0)
-
-
-current_score = get_score(latest)
-previous_score = get_score(previous) if previous else None
-
-# ─────────────────────────────
-# UI
-# ─────────────────────────────
-
-st.title("🛡️ Comply.dev Dashboard")
-
-# ─────────────
-# SCORE + TREND
-# ─────────────
-
-st.subheader("📈 Compliance Score")
-
-score_col1, score_col2 = st.columns(2)
-
-score_col1.metric("Current Score", f"{current_score}%")
-
-if previous_score is not None:
-    delta = current_score - previous_score
-    score_col2.metric("Change", f"{delta}%", delta=delta)
+    fw_cols = st.columns(len(fw_summary))
+    from dashboard.config import FRAMEWORK_LABELS
+    for i, (fw_key, fw_data) in enumerate(fw_summary.items()):
+        score = fw_data.get("compliance_score", 0)
+        color = "#1D9E75" if score >= 80 else "#EF9F27" if score >= 50 else "#E24B4A"
+        with fw_cols[i]:
+            metric_card(
+                FRAMEWORK_LABELS.get(fw_key, fw_key),
+                f"{score}%",
+                delta=f"{fw_data.get('controls_passed',0)}/{fw_data.get('controls_tested',0)} controls",
+                color=color,
+            )
 else:
-    score_col2.metric("Change", "N/A")
+    st.info("Framework summary not available in this report. Re-run a scan to generate it.")
 
-# Trend chart
-if previous:
-    trend_df = pd.DataFrame({
-        "Scan": ["Previous", "Current"],
-        "Score": [previous_score, current_score]
-    })
-    
-    fig = px.line(trend_df, x="Scan", y="Score", markers=True, title="Compliance Score Trend")
-    st.plotly_chart(fig, use_container_width=True)
+st.markdown("---")
 
-st.divider()
-
-# ─────────────
-# DRIFT SECTION
-# ─────────────
-
-st.subheader("📊 Changes Since Last Scan")
-
-c1, c2, c3 = st.columns(3)
-
-c1.metric("❌ New Issues", len(new_findings))
-c2.metric("✅ Resolved", len(resolved_findings))
-c3.metric("🔁 Still Present", len(persistent_findings))
-
-st.divider()
-
-# ─────────────
-# CRITICAL ISSUES
-# ─────────────
-
-critical = df[(df["status"] == "FAIL") & (df["severity"] == "CRITICAL")]
-
-if not critical.empty:
-    st.error("🚨 CRITICAL ISSUES DETECTED")
-
-    for _, row in critical.iterrows():
-        st.markdown(f"""
-**{row['title']}**  
-Resource: `{row['resource']}`  
-🔧 {row.get('remediation', 'No remediation provided')}
-""")
-
-st.divider()
-
-# ─────────────
-# FINDINGS TABLE
-# ─────────────
-
-st.subheader("📋 All Findings")
-
-st.dataframe(df)
+# ── Critical findings preview ───────────────────────────────────
+if not df.empty and "status" in df.columns and "severity" in df.columns:
+    critical_df = df[(df["status"] == "FAIL") & (df["severity"] == "CRITICAL")]
+    if not critical_df.empty:
+        st.markdown("##### Critical findings")
+        from dashboard.components import finding_expander
+        for _, row in critical_df.head(5).iterrows():
+            finding_expander(row)
+        if len(critical_df) > 5:
+            st.caption(f"Showing 5 of {len(critical_df)} critical findings. See Findings page for all.")

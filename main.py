@@ -741,8 +741,7 @@ if data_source == "📡 Latest scan (GitHub)":
     with st.spinner("Fetching latest scan from GitHub..."):
         report = load_report_from_github()
     if report is None:
-        st.error("🚨 No scan report found from GitHub")
-        st.write("Check if latest.json exists in reports-data branch")
+        st.error("🚨 No scan report found. Check that latest.json exists in the reports-data branch.")
 
 elif data_source == "📂 Upload report":
     if uploaded_file:
@@ -760,12 +759,7 @@ elif data_source == "⚡ Run live scan":
         st.info("Click **Run scan now** to trigger a live scan.", icon="⚡")
 
 
-# ✅ DEBUG — ADD THIS
-st.write("DEBUG: Report loaded?", report is not None)
 
-if report:
-    st.write("DEBUG: Findings count:", len(report.get("findings", [])))
-    st.write("DEBUG: First record:", report.get("findings", [None])[0])
 
 
 # ✅ SAFER STOP CONDITION
@@ -792,8 +786,7 @@ try:
     score    = round(passed / total * 100) if total > 0 else 0
 
 except Exception as e:
-    st.error("🚨 App crashed")
-    st.write(str(e))
+    st.error("Report could not be parsed. The file may be malformed or from an incompatible version.")
     st.stop()
 
 # Build lookup: check_id → list of findings (one check_id can fire multiple times
