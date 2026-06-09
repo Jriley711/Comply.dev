@@ -158,7 +158,8 @@ The scanner requires read-only access. Attach this policy to your IAM user:
 }
 ```
 
-###Project Structure
+## Project Structure
+
 ```bash
 Comply.dev/
 ├── comply/
