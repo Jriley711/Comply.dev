@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 
-from .config import SEVERITY_COLORS, STATUS_COLORS, SEVERITY_ORDER, FRAMEWORK_LABELS
+from config import SEVERITY_COLORS, STATUS_COLORS, SEVERITY_ORDER, FRAMEWORK_LABELS
 
 
 def score_gauge(score: int, label: str = "Compliance Score") -> go.Figure:
