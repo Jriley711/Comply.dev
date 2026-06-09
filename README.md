@@ -156,7 +156,9 @@ The scanner requires read-only access. Attach this policy to your IAM user:
         }
     ]
 }
+```
 
+###Project Structure
 ```bash
 Comply.dev/
 ├── comply/
@@ -186,7 +188,7 @@ Comply.dev/
 ├── main.py                      # CLI entry point + check registry
 ├── requirements.txt
 └── SECRETS_SETUP.md
-
+```
 ---
 
 ## Automated scans
