@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-from dashboard.data import load_latest, parse_report, format_scan_time
+from data import load_latest, parse_report, format_scan_time
 from dashboard.components import severity_badge, status_badge, metric_card
 from dashboard.config import FRAMEWORK_LABELS
 
