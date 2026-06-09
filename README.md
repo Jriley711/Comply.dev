@@ -156,6 +156,8 @@ The scanner requires read-only access. Attach this policy to your IAM user:
         }
     ]
 }
+
+```bash
 Comply.dev/
 ├── comply/
 │   ├── scanner.py               # Scan orchestrator
@@ -230,5 +232,3 @@ Built by [Jonathan Riley](https://linkedin.com/in/JonathanMichaelRiley) · Senio
 </div>
 
 ---
-
-## Project structur
