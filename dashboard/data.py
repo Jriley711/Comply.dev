@@ -7,7 +7,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timezone
 
-from .config import REPORTS_BASE_URL, SEVERITY_ORDER
+from config import REPORTS_BASE_URL, SEVERITY_ORDER
 
 logger = logging.getLogger(__name__)
 
