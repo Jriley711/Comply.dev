@@ -3,8 +3,8 @@
 import streamlit as st
 import pandas as pd
 
-from dashboard.data import load_latest, load_previous, parse_report, compute_drift, format_scan_time
-from dashboard.components import severity_badge, status_badge, metric_card
+from data import load_latest, load_previous, parse_report, compute_drift, format_scan_time
+from components import severity_badge, status_badge, metric_card
 
 st.markdown("## 📊 Compliance Drift")
 
